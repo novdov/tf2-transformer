@@ -21,9 +21,8 @@ formatter = ColoredFormatter(
 )
 
 ch.setFormatter(formatter)
-logger = logging.getLogger("seq2seq")
+logger = logging.getLogger("transformer")
 logger.setLevel(logging.DEBUG)
-logger.handlers = []       # No duplicated handlers
-logger.propagate = False   # workaround for duplicated logs in ipython
+logger.handlers = []
+logger.propagate = False
 logger.addHandler(ch)
-logging.addLevelName(logging.INFO + 1, "INFOV")
