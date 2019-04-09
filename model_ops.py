@@ -2,6 +2,15 @@ import math
 import tensorflow as tf
 
 
+def dense_layer(units, activation=None, use_bias=True, **kwargs):
+    return tf.keras.layers.Dense(
+        units=units,
+        activation=activation,
+        use_bias=use_bias,
+        **kwargs
+    )
+
+
 def scaled_dot_product_attention(query, keys, values):
     d_k = tf.shape(query)[-1]
     energy = tf.matmul(query, keys, transpose_b=True)
@@ -15,108 +24,84 @@ def multi_head_attention(query,
                          values,
                          num_heads,
                          internal_dim,
-                         output_dim,
-                         scope=None):
-    reuse = tf.AUTO_REUSE
+                         output_dim):
     attention_values = []
 
-    with tf.variable_scope(scope), tf.name_scope(scope):
-        for head_idx in range(1, num_heads+1):
-            mapped_query = tf.layers.dense(
-                inputs=query,
-                units=internal_dim,
-                activation=None,
-                use_bias=False,
-                name=f"head_{head_idx}/query",
-                reuse=reuse
-            )
-            mapped_keys = tf.layers.dense(
-                inputs=keys,
-                units=internal_dim,
-                activation=None,
-                use_bias=False,
-                name=f"head_{head_idx}/keys",
-                reuse=reuse
-            )
-            mapped_values = tf.layers.dense(
-                inputs=values,
-                units=internal_dim,
-                activation=None,
-                use_bias=False,
-                name=f"head_{head_idx}/values",
-                reuse=reuse
-            )
+    for head_idx in range(1, num_heads+1):
+        mapped_query = dense_layer(
+            units=internal_dim,
+            use_bias=False,
+            name=f"head_{head_idx}/query"
+        )(query)
 
-            att_values, alignments = scaled_dot_product_attention(
-                mapped_query, mapped_keys, mapped_values)
-            attention_values.append(att_values)
+        mapped_keys = dense_layer(
+            units=internal_dim,
+            use_bias=False,
+            name=f"head_{head_idx}/keys",
+        )(keys)
 
-        outputs = tf.layers.dense(
-            inputs=tf.concat(attention_values, axis=-1),
-            units=output_dim,
-            activation=None,
-            name="concat_linear",
-            reuse=reuse
-        )
+        mapped_values = dense_layer(
+            units=internal_dim,
+            use_bias=False,
+            name=f"head_{head_idx}/values",
+        )(values)
+
+        att_values, alignments = scaled_dot_product_attention(
+            mapped_query, mapped_keys, mapped_values)
+        attention_values.append(att_values)
+
+    outputs = dense_layer(
+        units=output_dim,
+        name="concat_linear"
+    )(tf.concat(attention_values, axis=-1))
+
     return outputs
 
 
-def layer_norm(inputs,
-               do_scale=True,
-               scope=None):
-    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE), tf.name_scope(scope):
-        length = inputs.get_shape()[-1]
-        mean = tf.reduce_mean(inputs, axis=[-1], keep_dims=True)
-        var = tf.reduce_mean(tf.square(inputs - mean),
-                             axis=[-1],
-                             keep_dims=True)
-        norm_inputs = (inputs - mean) * tf.rsqrt(var + 1e12)
+def layer_norm(inputs, do_scale=True):
+    length = inputs.get_shape()[-1]
+    mean = tf.reduce_mean(inputs, axis=[-1], keep_dims=True)
+    var = tf.reduce_mean(tf.square(inputs - mean),
+                         axis=[-1],
+                         keep_dims=True)
+    norm_inputs = (inputs - mean) * tf.math.rsqrt(var + 1e12)
 
-        if do_scale:
-            scale = tf.get_variable(
-                name="scale",
-                shape=[length],
-                initializer=tf.ones_initializer()
-            )
-            bias = tf.get_variable(
-                name="bias",
-                shape=[length],
-                initializer=tf.zeros_initializer()
-            )
-            outputs = norm_inputs * scale + bias
-        else:
-            outputs = norm_inputs
+    if do_scale:
+        scale = tf.Variable(initial_value=tf.ones(shape=[length]),
+                            name="scale")
+        bias = tf.Variable(initial_value=tf.zeros(shape=[length]),
+                           name="bias")
+        outputs = norm_inputs * scale + bias
+    else:
+        outputs = norm_inputs
     return outputs
 
 
-def position_wise_feed_forward(inputs, num_units, scope):
-    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
-        outputs = tf.layers.dense(inputs, num_units[0], activation=tf.nn.relu)
-        outputs = tf.layers.dense(outputs, num_units[1])
-        outputs += inputs
-        outputs = layer_norm(outputs)
+def position_wise_feed_forward(inputs, num_units):
+    outputs = dense_layer(units=num_units[0], activation=tf.nn.relu)(inputs)
+    outputs = dense_layer(units=num_units[1])(outputs)
+    outputs += inputs
+    outputs = layer_norm(outputs)
     return outputs
 
 
 def position_embedding(length, depth):
-    position = tf.to_float(tf.range(length))
+    """Position embedding from tensorflow official model."""
+    position = tf.cast(tf.range(length), dtype=tf.float32)
     num_timescales = depth // 2
 
-    log_timescale = math.log(10000.0) / (tf.to_float(num_timescales) - 1)
+    log_timescale = math.log(10000.0) / (tf.cast(num_timescales, dtype=tf.float32) - 1)
     div_terms = tf.exp(
-        tf.to_float(tf.range(num_timescales)) * -log_timescale)
+        tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale)
     scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(div_terms, 0)
     signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
     return signal
 
 
-def create_embedding(vocab_size, embedding_size, scope):
-    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
-        embedding = tf.get_variable(
-            "word_embedding,",
-            shape=[vocab_size, embedding_size],
-            trainable=True,
-            dtype=tf.float32,
-            initializer=tf.contrib.layers.xavier_initializer()
-        )
+def create_embedding(vocab_size, embedding_size):
+    embedding = tf.Variable(
+        tf.initializers.GlorotUniform(shape=[vocab_size, embedding_size]),
+        name="word_embedding",
+        dtype=tf.float32
+    )
     return embedding
