@@ -9,9 +9,7 @@ from utils import logger
 
 class Preprocessor:
 
-    def __init__(self,
-                 hparams,
-                 tokenizer_path=None):
+    def __init__(self, hparams):
         self.hparams = hparams
         self.file_paths = {
             "train": {"en": "iwslt2016/train.tags.de-en.en",
@@ -29,21 +27,18 @@ class Preprocessor:
         self.data_output_fmt = "iwslt2016/{}/"
         self.write_preprocessed_file()
 
-        self.tokenizer_path = tokenizer_path
-        if self.tokenizer_path is not None:
-            logger.info(f"Load sentencepiece tokenizer from {self.tokenizer_path}")
-            self.sentpiece_processor = spm.SentencePieceProcessor()
-            self.sentpiece_processor.Load(self.tokenizer_path)
+    def load_tokenizer(self, model_path):
+        self.sentpiece_processor = spm.SentencePieceProcessor()
+        self.sentpiece_processor.Load(model_path)
 
-    def train_tokenizer(self, model_path):
+    def train_tokenizer(self, model_prefix):
         input_path = os.path.join(self.data_output_fmt.format("preprocessed"), "train")
         params = f"--input={input_path} --pad_id=0 " \
                  f"--unk_id=1 --bos_id=2 --eos_id=3 " \
-                 f"--model_prefix={model_path} " \
+                 f"--model_prefix={model_prefix} " \
                  f"--vocab_size={self.hparams.vocab_size} " \
                  f"--model_type=bpe"
         spm.SentencePieceTrainer.Train(params)
-        self.tokenizer_path = model_path
 
     def segment_and_write(self):
         def _segment_and_write(sents, filename):
@@ -52,15 +47,12 @@ class Preprocessor:
                     pieces = self.sentpiece_processor.EncodeAsPieces(sent)
                     f.write(" ".join(pieces) + "\n")
 
-        if self.tokenizer_path is None:
-            raise ValueError("Train tokenizer first using `train_tokenizer()`")
-
         output_dir = self.data_output_fmt.format("segmented")
         os.makedirs(output_dir, exist_ok=True)
         for mode, files in self.files.items():
             for lang, data in files.items():
                 file_path = f"{mode}.{lang}.bpe"
-                logger.info(f"Write file at {file_path}.")
+                logger.info(f"Write segmented file at {file_path}.")
                 _segment_and_write(data, os.path.join(output_dir, file_path))
 
     def write_preprocessed_file(self):
@@ -73,7 +65,7 @@ class Preprocessor:
         for mode, files in self.files.items():
             for lang, data in files.items():
                 file_path = f"{mode}.{lang}"
-                logger.info(f"Write file at {file_path}.")
+                logger.info(f"Write preprocessed file at {file_path}.")
                 _write_file(data, os.path.join(output_dir, file_path))
 
         all_train_data = self.files["train"]["en"] + self.files["train"]["de"]

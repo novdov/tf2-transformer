@@ -10,4 +10,5 @@ if __name__ == "__main__":
 
     preprocessor = Preprocessor(hparams)
     preprocessor.train_tokenizer(base_dir.joinpath("spm"))
+    preprocessor.load_tokenizer(str(base_dir.joinpath("spm.model")))
     preprocessor.segment_and_write()
