@@ -37,7 +37,11 @@ class Preprocessor:
 
     def train_tokenizer(self, model_path):
         input_path = os.path.join(self.data_output_fmt.format("preprocessed"), "train")
-        params = f"--input={input_path} --pad_id=0 --unk_id=1 --bos_id=2 --eos_id=3 --model_prefix={model_path} --vocab_size={self.hparams.vocab_size} --model_type=bpe"
+        params = f"--input={input_path} --pad_id=0 " \
+                 f"--unk_id=1 --bos_id=2 --eos_id=3 " \
+                 f"--model_prefix={model_path} " \
+                 f"--vocab_size={self.hparams.vocab_size} " \
+                 f"--model_type=bpe"
         spm.SentencePieceTrainer.Train(params)
         self.tokenizer_path = model_path
 
