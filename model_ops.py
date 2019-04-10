@@ -85,8 +85,11 @@ def position_wise_feed_forward(inputs, num_units):
     return outputs
 
 
-def position_embedding(length, depth):
-    """Position embedding from tensorflow official model."""
+def position_encoding(length, depth):
+    """
+    Position embedding from tensorflow official model.
+    https://github.com/tensorflow/models/blob/master/official/transformer/model/model_utils.py
+    """
     position = tf.cast(tf.range(length), dtype=tf.float32)
     num_timescales = depth // 2
 
