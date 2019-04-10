@@ -9,9 +9,9 @@ from utils import logger
 
 class Preprocessor:
 
-    def __init(self,
-               hparams,
-               tokenizer_path=None):
+    def __init__(self,
+                 hparams,
+                 tokenizer_path=None):
         self.hparams = hparams
         self.file_paths = {
             "train": {"en": "iwslt2016/train.tags.de-en.en",
@@ -37,17 +37,13 @@ class Preprocessor:
 
     def train_tokenizer(self, model_path):
         input_path = os.path.join(self.data_output_fmt.format("preprocessed"), "train")
-        params = f"""
-        --input={input_path} --pad_id=0 --unk_id=1 
-        --bos_id=2 --eos_id=3 
-        --model_prefix={model_path} 
-        --vocab_size={self.hparams.vocab_size} 
-        --model_type=bpe"""
+        params = f"--input={input_path} --pad_id=0 --unk_id=1 --bos_id=2 --eos_id=3 --model_prefix={model_path} --vocab_size={self.hparams.vocab_size} --model_type=bpe"
         spm.SentencePieceTrainer.Train(params)
+        self.tokenizer_path = model_path
 
     def segment_and_write(self):
         def _segment_and_write(sents, filename):
-            with open(filename, "r") as f:
+            with open(filename, "w") as f:
                 for sent in sents:
                     pieces = self.sentpiece_processor.EncodeAsPieces(sent)
                     f.write(" ".join(pieces) + "\n")
@@ -56,6 +52,7 @@ class Preprocessor:
             raise ValueError("Train tokenizer first using `train_tokenizer()`")
 
         output_dir = self.data_output_fmt.format("segmented")
+        os.makedirs(output_dir, exist_ok=True)
         for mode, files in self.files.items():
             for lang, data in files.items():
                 file_path = f"{mode}.{lang}.bpe"
@@ -64,15 +61,19 @@ class Preprocessor:
 
     def write_preprocessed_file(self):
         def _write_file(sents, filename):
-            with open(filename, "r") as f:
+            with open(filename, "w") as f:
                 f.write("\n".join(sents))
 
         output_dir = self.data_output_fmt.format("preprocessed")
+        os.makedirs(output_dir, exist_ok=True)
         for mode, files in self.files.items():
             for lang, data in files.items():
                 file_path = f"{mode}.{lang}"
                 logger.info(f"Write file at {file_path}.")
                 _write_file(data, os.path.join(output_dir, file_path))
+
+        all_train_data = self.files["train"]["en"] + self.files["train"]["de"]
+        _write_file(all_train_data, os.path.join(output_dir, "train"))
 
 
 def read_file(filename, mode):
