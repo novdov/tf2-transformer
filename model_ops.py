@@ -14,7 +14,7 @@ def dense_layer(units, activation=None, use_bias=True, **kwargs):
 def scaled_dot_product_attention(query, keys, values):
     d_k = tf.shape(query)[-1]
     energy = tf.matmul(query, keys, transpose_b=True)
-    alignments = tf.nn.softmax(energy * tf.rsqrt(tf.cast(d_k, tf.float32)))
+    alignments = tf.nn.softmax(energy * tf.math.rsqrt(tf.cast(d_k, tf.float32)))
     att_values = tf.matmul(alignments, values)
     return att_values, alignments
 
