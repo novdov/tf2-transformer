@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from preprocessor import Preprocessor
-from hparam_utils import Hparams
+from hparams import Hparams
 
 
 if __name__ == "__main__":
