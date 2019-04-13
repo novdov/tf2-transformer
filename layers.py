@@ -35,3 +35,32 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         concat_att = tf.reshape(att_output, (batch_size, -1, self.d_model))
         output = ops.dense_layer(self.d_model)(concat_att)
         return output, att_weights
+
+
+class EncoderLayer(tf.keras.layers.Layer):
+
+    def __init__(self, num_heads, d_model, d_ff, dropout_rate):
+        super(EncoderLayer, self).__init__()
+        self.dropout_rate = dropout_rate
+        self.multi_head_attention = MultiHeadAttention(d_model, num_heads)
+
+        self.att_dropout = tf.keras.layers.Dropout(dropout_rate)
+        self.ff_dropout = tf.keras.layers.Dropout(dropout_rate)
+
+    def call(self, encoder_inputs, mask, training):
+        att_output, _ = self.multi_head_attention(
+            encoder_inputs, encoder_inputs, encoder_inputs, mask)
+        att_output = self.att_dropout(att_output, training=training)
+
+        output = ops.residual_connection(ops.position_wise_feed_forward,
+                                         )
+
+
+class DecoderLayer(tf.keras.layers.Layer):
+
+    def __init__(self, num_heads, d_model, d_ff, dropout_rate):
+        super(DecoderLayer, self).__init__()
+        self.multi_head_attention = MultiHeadAttention(d_model, num_heads)
+
+    def call(self, decoder_inputs, mask, training):
+        pass

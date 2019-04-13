@@ -105,9 +105,8 @@ def position_wise_feed_forward(inputs, d_ff, d_model):
     ])(inputs)
 
 
-def residual_connection(network_fn, inputs, *args, **kwargs):
-    outputs = network_fn(inputs, *args, **kwargs)
-    return layer_norm(outputs + inputs)
+def sublayer_connection(inputs, outputs):
+    return layer_norm(inputs + outputs)
 
 
 def position_encoding(length, depth):
