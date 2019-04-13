@@ -12,21 +12,26 @@ def dense_layer(units, activation=None, use_bias=True, **kwargs):
 
 
 def scaled_dot_product_attention(query,
-                                 keys,
-                                 values,
-                                 dropout_rate=None,
-                                 mask_subsequent=False):
-    d_k = tf.shape(query)[-1]
-    scores = tf.matmul(
-        query, keys, transpose_b=True) * tf.math.rsqrt(tf.cast(d_k, tf.float32))
-    scores = mask_tensor(scores, subsequent=False)
-    if mask_subsequent:
-        scores = mask_tensor(scores, mask_subsequent)
-    alignments = tf.nn.softmax(scores)
-    if dropout_rate is not None:
-        alignments = tf.nn.dropout(rate=dropout_rate)
-    att_values = tf.matmul(alignments, values)
-    return att_values, alignments
+                                 key,
+                                 value,
+                                 mask=None):
+    """
+    Calculate the attention weights.
+    :param query: a query Tensor with shape of [..., seq_len_q, depth]
+    :param key: a key Tensor with shape of [..., seq_len_k, depth]
+    :param value: a vale Tensor with shape of [..., seq_len_v, depth]
+    :param mask: mask Tensor broadcastable
+    :return: tuple of attention output and attention weights
+    """
+    d_k = tf.cast(tf.shape(key)[-1], tf.float32)
+    scaled_logits = tf.matmul(query, key, transpose_b=True) * tf.math.rsqrt(d_k)
+
+    if mask is not None:
+        scaled_logits += (mask * 1e-9)
+
+    weights = tf.nn.softmax(scaled_logits, axis=-1)
+    output = tf.matmul(weights, value)
+    return output, weights
 
 
 def multi_head_attention(query,
