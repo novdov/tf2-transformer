@@ -12,25 +12,25 @@ def dense_layer(units, activation=None, use_bias=True, **kwargs):
 
 
 def scaled_dot_product_attention(query,
-                                 key,
-                                 value,
+                                 keys,
+                                 values,
                                  mask=None):
     """
     Calculate the attention weights.
     :param query: a query Tensor with shape of [..., seq_len_q, depth]
-    :param key: a key Tensor with shape of [..., seq_len_k, depth]
-    :param value: a vale Tensor with shape of [..., seq_len_v, depth]
+    :param keys: a key Tensor with shape of [..., seq_len_k, depth]
+    :param values: a vale Tensor with shape of [..., seq_len_v, depth]
     :param mask: mask Tensor broadcastable
     :return: tuple of attention output and attention weights
     """
-    d_k = tf.cast(tf.shape(key)[-1], tf.float32)
-    scaled_logits = tf.matmul(query, key, transpose_b=True) * tf.math.rsqrt(d_k)
+    d_k = tf.cast(tf.shape(keys)[-1], tf.float32)
+    scaled_logits = tf.matmul(query, keys, transpose_b=True) * tf.math.rsqrt(d_k)
 
     if mask is not None:
         scaled_logits += (mask * 1e-9)
 
     weights = tf.nn.softmax(scaled_logits, axis=-1)
-    output = tf.matmul(weights, value)
+    output = tf.matmul(weights, values)
     return output, weights
 
 
