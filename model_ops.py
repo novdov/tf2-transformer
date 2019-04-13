@@ -95,7 +95,7 @@ def layer_norm(inputs, do_scale=True):
     return outputs
 
 
-def position_wise_feed_forward(inputs, d_ff, d_model):
+def position_wise_feed_forward(d_ff, d_model):
     """
     Apply position wise feed forward to inputs.
     """
