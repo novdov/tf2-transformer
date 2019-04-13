@@ -35,12 +35,18 @@ class Data:
     def _create_generator(self):
         sents1, sents2 = self._load_data()
         for sent1, sent2 in zip(sents1, sents2):
-            x = self._encode(sent1, "source")
-            y = self._encode(sent2, "target")
-            decoder_input, y = y[:-1], y[1:]
+            src_sent = self._encode(sent1, "source")
+            tgt_sent = self._encode(sent2, "target")
+            decoder_input, target = tgt_sent[:-1], tgt_sent[1:]
 
-            x_len, y_len = len(x), len(y)
-            yield (x, x_len, sent1), (decoder_input, y, y_len, sent2)
+            src_len, tgt_len = len(src_sent), len(tgt_sent)
+            encoder_meta = (src_sent, src_len, sent1)
+            decoder_meta = (decoder_input, tgt_sent, tgt_len, sent2)
+
+            yield {
+                "encoder_meta": encoder_meta,
+                "decoder_meta": decoder_meta
+            }
 
     def _load_data(self):
         max_len = self.hparams.max_len

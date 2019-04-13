@@ -11,10 +11,20 @@ def dense_layer(units, activation=None, use_bias=True, **kwargs):
     )
 
 
-def scaled_dot_product_attention(query, keys, values):
+def scaled_dot_product_attention(query,
+                                 keys,
+                                 values,
+                                 dropout_rate=None,
+                                 mask_subsequent=False):
     d_k = tf.shape(query)[-1]
-    energy = tf.matmul(query, keys, transpose_b=True)
-    alignments = tf.nn.softmax(energy * tf.math.rsqrt(tf.cast(d_k, tf.float32)))
+    scores = tf.matmul(
+        query, keys, transpose_b=True) * tf.math.rsqrt(tf.cast(d_k, tf.float32))
+    scores = mask_tensor(scores, subsequent=False)
+    if mask_subsequent:
+        scores = mask_tensor(scores, mask_subsequent)
+    alignments = tf.nn.softmax(scores)
+    if dropout_rate is not None:
+        alignments = tf.nn.dropout(rate=dropout_rate)
     att_values = tf.matmul(alignments, values)
     return att_values, alignments
 
@@ -24,30 +34,33 @@ def multi_head_attention(query,
                          values,
                          num_heads,
                          internal_dim,
-                         output_dim):
+                         output_dim,
+                         name_prefix,
+                         dropout_rate=None,
+                         mask_subsequent=False):
     attention_values = []
 
     for head_idx in range(1, num_heads+1):
         mapped_query = dense_layer(
             units=internal_dim,
             use_bias=False,
-            name=f"head_{head_idx}/query"
+            name=f"{name_prefix}/head_{head_idx}/query"
         )(query)
 
         mapped_keys = dense_layer(
             units=internal_dim,
             use_bias=False,
-            name=f"head_{head_idx}/keys",
+            name=f"{name_prefix}/head_{head_idx}/keys",
         )(keys)
 
         mapped_values = dense_layer(
             units=internal_dim,
             use_bias=False,
-            name=f"head_{head_idx}/values",
+            name=f"{name_prefix}/head_{head_idx}/values",
         )(values)
 
         att_values, alignments = scaled_dot_product_attention(
-            mapped_query, mapped_keys, mapped_values)
+            mapped_query, mapped_keys, mapped_values, dropout_rate, mask_subsequent)
         attention_values.append(att_values)
 
     outputs = dense_layer(
@@ -108,3 +121,28 @@ def create_embedding(vocab_size, embedding_size):
         dtype=tf.float32
     )
     return embedding
+
+
+def mask_tensor(input_tensor, subsequent=False):
+    negative_inf = -2 ** 32 + 1
+    if subsequent:
+        diag_vals = tf.ones_like(tf.expand_dims(input_tensor[0], 0))
+        triu = tf.linalg.LinearOperatorLowerTriangular(diag_vals).to_dense()
+        mask = tf.tile(triu, [input_tensor.shape[0], 1, 1])
+    else:
+        mask = tf.sign(input_tensor)
+
+    paddings = tf.ones_like(mask) * negative_inf
+    return tf.where(tf.equal(mask, 0), paddings, input_tensor)
+
+
+def label_smoothing(input_tensor, epsilon=0.1):
+    return (1 - epsilon) * input_tensor + (epsilon / input_tensor.shape[-1])
+
+
+def noam_lr_decay(learning_rate, step, learning_rate_warmup_steps):
+    learning_rate *= tf.minimum(
+        step * learning_rate_warmup_steps ** -1.5,
+        step ** -0.5
+    )
+    return learning_rate
