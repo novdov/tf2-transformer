@@ -95,12 +95,19 @@ def layer_norm(inputs, do_scale=True):
     return outputs
 
 
-def position_wise_feed_forward(inputs, num_units):
-    outputs = dense_layer(units=num_units[0], activation=tf.nn.relu)(inputs)
-    outputs = dense_layer(units=num_units[1])(outputs)
-    outputs += inputs
-    outputs = layer_norm(outputs)
-    return outputs
+def position_wise_feed_forward(inputs, d_ff, d_model):
+    """
+    Apply position wise feed forward to inputs.
+    """
+    return tf.keras.Sequential([
+        dense_layer(units=d_ff, activation=tf.nn.relu),
+        dense_layer(d_model)
+    ])(inputs)
+
+
+def residual_connection(network_fn, inputs, *args, **kwargs):
+    outputs = network_fn(inputs, *args, **kwargs)
+    return layer_norm(outputs + inputs)
 
 
 def position_encoding(length, depth):
