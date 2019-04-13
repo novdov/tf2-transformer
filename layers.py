@@ -51,9 +51,10 @@ class EncoderLayer(tf.keras.layers.Layer):
         att_output, _ = self.multi_head_attention(
             encoder_inputs, encoder_inputs, encoder_inputs, mask)
         att_output = self.att_dropout(att_output, training=training)
+        output1 = ops.sublayer_connection(encoder_inputs, att_output)
 
-        output = ops.residual_connection(ops.position_wise_feed_forward,
-                                         )
+        ff_output = ops.position_wise_feed_forward(output1, )
+
 
 
 class DecoderLayer(tf.keras.layers.Layer):

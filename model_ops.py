@@ -102,7 +102,7 @@ def position_wise_feed_forward(inputs, d_ff, d_model):
     return tf.keras.Sequential([
         dense_layer(units=d_ff, activation=tf.nn.relu),
         dense_layer(d_model)
-    ])(inputs)
+    ])
 
 
 def sublayer_connection(inputs, outputs):
