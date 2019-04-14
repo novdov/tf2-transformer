@@ -71,12 +71,12 @@ class DecoderLayer(tf.keras.layers.Layer):
         self.att_dropout2 = tf.keras.layers.Dropout(dropout_rate)
         self.ff_dropout = tf.keras.layers.Dropout(dropout_rate)
 
-    def call(self, decoder_inputs, encoder_output, mask, future_mask, training):
+    def call(self, decoder_inputs, encoder_output, mask, subsequent_mask, training):
         att1, att_weights1 = self.multi_head_attention1(
             decoder_inputs,
             decoder_inputs,
             decoder_inputs,
-            future_mask
+            subsequent_mask
         )
         att1 = self.att_dropout1(att1, training=training)
         output1 = ops.sublayer_connection(decoder_inputs, att1)
@@ -101,19 +101,20 @@ class Encoder(tf.keras.layers.Layer):
 
     def __init__(self,
                  num_layers,
-                 d_model,
                  num_heads,
+                 d_model,
                  d_ff,
-                 vocab_size,
+                 encoder_vocab_size,
                  dropout_rate):
         super(Encoder, self).__init__()
-        self.d_model = d_model
         self.num_layers = num_layers
+        self.d_model = d_model
 
-        self.embedding = tf.keras.layers.Embedding(vocab_size, d_model)
-        self.position_encoding = ops.position_encoding(vocab_size, d_model)
+        self.embedding = ops.create_embedding(encoder_vocab_size, d_model)
+        self.position_encoding = ops.position_encoding(encoder_vocab_size, d_model)
 
-        self.encoder_layers = [EncoderLayer(num_heads, d_model, d_ff, dropout_rate)]
+        self.encoder_layers = [EncoderLayer(num_heads, d_model, d_ff, dropout_rate)
+                               for _ in range(num_layers)]
         self.dropout = tf.keras.layers.Dropout(dropout_rate)
 
     def call(self, encoder_input, mask, training):
@@ -121,4 +122,56 @@ class Encoder(tf.keras.layers.Layer):
 
         encoder_input = self.embedding(encoder_input)
         encoder_input *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
-        encoder_input += self.position_encoding
+        encoder_input += self.position_encoding[:, :seq_len, :]
+        encoder_input = self.dropout(encoder_input, training=training)
+
+        for i in range(self.num_layers):
+            encoder_input = self.encoder_layers[i](encoder_input,
+                                                   mask,
+                                                   training=training)
+        encoder_output = encoder_input
+        return encoder_output
+
+
+class Decoder(tf.keras.layers.Layer):
+
+    def __init__(self,
+                 num_layers,
+                 num_heads,
+                 d_model,
+                 d_ff,
+                 decoder_vocab_size,
+                 dropout_rate=0.1):
+        super(Decoder, self).__init__()
+
+        self.num_layers = num_layers
+        self.d_model = d_model
+
+        self.embedding = ops.create_embedding(decoder_vocab_size, d_model)
+        self.position_encoding = ops.position_encoding(decoder_vocab_size, d_model)
+
+        self.decoder_layers = [DecoderLayer(num_heads, d_model, d_ff, dropout_rate)
+                               for _ in range(num_layers)]
+        self.dropout = tf.keras.layers.Dropout(dropout_rate)
+
+    def call(self,
+             decoder_input,
+             encoder_output,
+             mask,
+             subsequent_mask,
+             training):
+        seq_len = tf.shape(decoder_input)[1]
+        attention_weights = {}
+
+        decoder_input = self.embedding(decoder_input)
+        decoder_input *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
+        decoder_input += self.position_encoding[:, :seq_len, :]
+
+        for i in range(self.num_layers):
+            decoder_input, att_weights1, att_weights2 = self.decoder_layers[i](
+                decoder_input, encoder_output, mask, subsequent_mask, training)
+            attention_weights[f"decoder_layer{i+1}_weights1"] = att_weights1
+            attention_weights[f"decoder_layer{i+1}_weights2"] = att_weights2
+
+        decoder_output = decoder_input
+        return decoder_output, attention_weights
