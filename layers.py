@@ -95,3 +95,30 @@ class DecoderLayer(tf.keras.layers.Layer):
         output3 = ops.sublayer_connection(output2, ff_output)
 
         return output3, att_weights1, att_weights2
+
+
+class Encoder(tf.keras.layers.Layer):
+
+    def __init__(self,
+                 num_layers,
+                 d_model,
+                 num_heads,
+                 d_ff,
+                 vocab_size,
+                 dropout_rate):
+        super(Encoder, self).__init__()
+        self.d_model = d_model
+        self.num_layers = num_layers
+
+        self.embedding = tf.keras.layers.Embedding(vocab_size, d_model)
+        self.position_encoding = ops.position_encoding(vocab_size, d_model)
+
+        self.encoder_layers = [EncoderLayer(num_heads, d_model, d_ff, dropout_rate)]
+        self.dropout = tf.keras.layers.Dropout(dropout_rate)
+
+    def call(self, encoder_input, mask, training):
+        seq_len = tf.shape(encoder_input)[1]
+
+        encoder_input = self.embedding(encoder_input)
+        encoder_input *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
+        encoder_input += self.position_encoding

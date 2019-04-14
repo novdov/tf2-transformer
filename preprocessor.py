@@ -3,6 +3,7 @@ import re
 import sentencepiece as spm
 from tqdm import tqdm
 from pathlib import Path
+from tensor2tensor.data_generators.text_encoder import SubwordTextEncoder
 
 from utils import logger
 

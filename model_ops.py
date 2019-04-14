@@ -110,10 +110,6 @@ def sublayer_connection(inputs, outputs):
 
 
 def position_encoding(length, depth):
-    """
-    Position embedding from tensorflow official model.
-    https://github.com/tensorflow/models/blob/master/official/transformer/model/model_utils.py
-    """
     position = tf.cast(tf.range(length), dtype=tf.float32)
     num_timescales = depth // 2
 
@@ -122,16 +118,11 @@ def position_encoding(length, depth):
         tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale)
     scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(div_terms, 0)
     signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
-    return signal
+    return tf.expand_dims(signal, axis=0)
 
 
 def create_embedding(vocab_size, embedding_size):
-    embedding = tf.Variable(
-        tf.initializers.GlorotUniform(shape=[vocab_size, embedding_size]),
-        name="word_embedding",
-        dtype=tf.float32
-    )
-    return embedding
+    return tf.keras.layers.Embedding(vocab_size, embedding_size)
 
 
 def mask_tensor(input_tensor, subsequent=False):
