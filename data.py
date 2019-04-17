@@ -37,7 +37,8 @@ class Data:
         )
         if self.mode == "train":
             dataset.shuffle(128)
-        dataset = dataset.padded_batch(batch_size, shapes).prefetch(1)
+        dataset = dataset.repeat()
+        dataset = dataset.padded_batch(batch_size, shapes).prefetch(8)
         return dataset
 
     def _create_generator(self):
