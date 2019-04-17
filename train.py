@@ -1,9 +1,7 @@
 import os
 import argparse
-# import tensorflow as tf
 from pathlib import Path
 
-# import model_ops as ops
 from model import Transformer
 from trainer import train_fn
 from hparams_utils import Hparams
