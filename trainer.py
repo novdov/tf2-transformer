@@ -23,7 +23,7 @@ def train_fn(hparams,
              eval_steps,
              eval_frequency):
 
-    learning_rate = ops.CustomAdamLearningRateSchedule(hparams.d_model)
+    learning_rate = ops.CustomLearningRateSchedule(hparams.d_model)
     optimize_fn(model,
                 loss=ops.loss_function,
                 lr_schedule=learning_rate)

@@ -90,7 +90,7 @@ def label_smoothing(input_tensor, epsilon=0.1):
     return (1 - epsilon) * input_tensor + (epsilon / input_tensor.shape[-1])
 
 
-class CustomAdamLearningRateSchedule(
+class CustomLearningRateSchedule(
         tf.keras.optimizers.schedules.LearningRateSchedule):
     def __init__(self, d_model, warmup_steps=4000):
         self.d_model = tf.cast(d_model, tf.float32)
