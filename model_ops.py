@@ -34,48 +34,6 @@ def scaled_dot_product_attention(query,
     return output, weights
 
 
-def multi_head_attention(query,
-                         keys,
-                         values,
-                         num_heads,
-                         internal_dim,
-                         output_dim,
-                         name_prefix,
-                         dropout_rate=None,
-                         mask_subsequent=False):
-    attention_values = []
-
-    for head_idx in range(1, num_heads+1):
-        mapped_query = dense_layer(
-            units=internal_dim,
-            use_bias=False,
-            name=f"{name_prefix}/head_{head_idx}/query"
-        )(query)
-
-        mapped_keys = dense_layer(
-            units=internal_dim,
-            use_bias=False,
-            name=f"{name_prefix}/head_{head_idx}/keys",
-        )(keys)
-
-        mapped_values = dense_layer(
-            units=internal_dim,
-            use_bias=False,
-            name=f"{name_prefix}/head_{head_idx}/values",
-        )(values)
-
-        att_values, alignments = scaled_dot_product_attention(
-            mapped_query, mapped_keys, mapped_values, dropout_rate, mask_subsequent)
-        attention_values.append(att_values)
-
-    outputs = dense_layer(
-        units=output_dim,
-        name="concat_linear"
-    )(tf.concat(attention_values, axis=-1))
-
-    return outputs
-
-
 def layer_norm(inputs):
     return tf.keras.layers.experimental.LayerNormalization(epsilon=1e-6)(inputs)
 
