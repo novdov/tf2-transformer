@@ -34,7 +34,7 @@ def train_fn(hparams,
     train_batches = train_dataset.batchify_data()
     eval_batches = eval_dataset.batchify_data()
 
-    model.fit(train_batches, epochs=1, steps_per_epoch=1)
+    # model.fit(train_batches, epochs=1, steps_per_epoch=1)
 
     callbacks = [
         tf.keras.callbacks.History(),
@@ -42,16 +42,16 @@ def train_fn(hparams,
         tf.keras.callbacks.TensorBoard(log_dir=output_dir)
     ]
     last_epoch = 0
-    output_fmt = os.path.join(output_dir, "model-{:05d}")
+    output_fmt = os.path.join(output_dir, "model-{epoch:05d}")
     callbacks.append(tf.keras.callbacks.ModelCheckpoint(
-        filepath=output_fmt.format(last_epoch), save_weights_only=True))
+        filepath=output_fmt, save_weights_only=True, period=20))
     checkpoints = tf.io.gfile.glob(os.path.join(output_dir, "model-*"))
     checkpoints = [os.path.basename(ckpt)[6:] for ckpt in checkpoints]
     epoch_numbers = [int(ckpt[:5]) for ckpt in checkpoints if len(ckpt) > 4]
     epoch_numbers.sort()
     if epoch_numbers:
         last_epoch = epoch_numbers[-1]
-        saved_path = os.path.join(output_dir, "model-%05d" % last_epoch)
+        saved_path = os.path.join(output_dir, f"model-{last_epoch:.05d}")
         model.load_weights(saved_path)
 
     model.fit(x=train_batches,
