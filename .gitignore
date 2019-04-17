@@ -1,5 +1,4 @@
 model_log/
-spm.*
 iwslt2016/
 .idea/
 # Byte-compiled / optimized / DLL files
