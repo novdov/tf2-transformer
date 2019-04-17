@@ -3,7 +3,6 @@ import re
 import sentencepiece as spm
 from tqdm import tqdm
 from pathlib import Path
-from tensor2tensor.data_generators.text_encoder import SubwordTextEncoder
 
 from utils import logger
 
@@ -33,7 +32,7 @@ class Preprocessor:
         self.sentpiece_processor.Load(model_path)
 
     def train_tokenizer(self, model_prefix):
-        input_path = os.path.join(self.data_output_fmt.format("preprocessed"), "train")
+        input_path = os.path.join(self.data_output_fmt.format("preprocessed"), "train.bpe")
         params = f"--input={input_path} --pad_id=0 " \
                  f"--unk_id=1 --bos_id=2 --eos_id=3 " \
                  f"--model_prefix={model_prefix} " \
@@ -69,7 +68,13 @@ class Preprocessor:
                 logger.info(f"Write preprocessed file at {file_path}.")
                 _write_file(data, os.path.join(output_dir, file_path))
 
-        all_train_data = self.files["train"]["en"] + self.files["train"]["de"]
+        en_train = self.files["train"]["en"]
+        de_train = self.files["train"]["de"]
+        all_train_data_bpe = en_train + de_train
+        all_train_data = [(en_sent + "\t" + de_sent)
+                          for en_sent, de_sent in zip(en_train, de_train)]
+
+        _write_file(all_train_data_bpe, os.path.join(output_dir, "train.bpe"))
         _write_file(all_train_data, os.path.join(output_dir, "train"))
 
 

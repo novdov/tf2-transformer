@@ -1,4 +1,16 @@
 {
+  "batch_size": 128,
   "vocab_size": 32000,
-  "d_model": 512
+  "d_model": 512,
+  "d_ff": 2048,
+  "num_layers": 6,
+  "num_heads": 8,
+  "encoder_vocab_size": 32000,
+  "decoder_vocab_size": 32000,
+  "train_steps": 100000,
+  "eval_frequency": 100,
+  "eval_steps": 1,
+  "dropout_rate": 0.1,
+  "vocab_path": "spm.vocab",
+  "max_len": 30
 }

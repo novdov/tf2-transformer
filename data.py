@@ -1,5 +1,5 @@
+import os
 import tensorflow as tf
-from pathlib import Path
 
 
 class Data:
@@ -8,18 +8,26 @@ class Data:
         self.hparams = hparams
         self.mode = mode
 
-        self.data_dir = Path(__file__).resolve().parent / "iwslt2016/segmented/"
+        self.data_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "iwslt2016/segmented/")
         self.filename_fmt = "{}.{}.bpe"
         self.token2id, self.id2token = self._load_vocab()
 
-    def create_iterator(self):
-        shapes = (([None], (), ()),
-                  ([None], [None], (), ()))
-        types = ((tf.int32, tf.int32, tf.string),
-                 (tf.int32, tf.int32, tf.int32, tf.string))
-        paddings = ((0, 0, ""),
-                    (0, 0, 0, ""))
-
+    def batchify_data(self):
+        types = (
+            {
+                "inputs": tf.int32,
+                "targets": tf.int32,
+            },
+            tf.int32
+        )
+        shapes = (
+            {
+                "inputs": [None],
+                "targets": [None],
+            },
+            [None]
+        )
         batch_size = self.hparams.batch_size
 
         dataset = tf.data.TextLineDataset.from_generator(
@@ -28,30 +36,30 @@ class Data:
             output_shapes=shapes,
         )
         if self.mode == "train":
-            dataset.shuffle(128*batch_size, seed=1234)
-        dataset = dataset.padded_batch(batch_size, shapes, paddings).prefetch(1)
-        return dataset.make_one_shot_iterator()
+            dataset.shuffle(128)
+        dataset = dataset.padded_batch(batch_size, shapes).prefetch(1)
+        return dataset
 
     def _create_generator(self):
         sents1, sents2 = self._load_data()
         for sent1, sent2 in zip(sents1, sents2):
-            src_sent = self._encode(sent1, "source")
-            tgt_sent = self._encode(sent2, "target")
-            decoder_input, target = tgt_sent[:-1], tgt_sent[1:]
+            inputs_encoded = self._encode(sent1, "source")
+            targets_encoded = self._encode(sent2, "target")
 
-            src_len, tgt_len = len(src_sent), len(tgt_sent)
-            encoder_meta = (src_sent, src_len, sent1)
-            decoder_meta = (decoder_input, tgt_sent, tgt_len, sent2)
-
-            yield {
-                "encoder_meta": encoder_meta,
-                "decoder_meta": decoder_meta
+            inputs = {
+                "inputs": inputs_encoded,
+                "targets": targets_encoded[:-1],
             }
+            targets_real = targets_encoded[1:]
+
+            yield inputs, targets_real
 
     def _load_data(self):
         max_len = self.hparams.max_len
-        source_path = self.data_dir.joinpath(self.filename_fmt.format(self.mode, "en"))
-        target_path = self.data_dir.joinpath(self.filename_fmt.format(self.mode, "de"))
+        source_path = os.path.join(self.data_dir,
+                                   self.filename_fmt.format(self.mode, "en"))
+        target_path = os.path.join(self.data_dir,
+                                   self.filename_fmt.format(self.mode, "de"))
 
         sents1, sents2 = [], []
         with tf.io.gfile.GFile(source_path) as f_source, \
@@ -73,7 +81,7 @@ class Data:
         return token2id, id2token
 
     def _encode(self, sentence, type_):
-        sentence = sentence.decode("utf-8")
+        # sentence = sentence.decode("utf-8")
         if type_ == "source":
             tokens = sentence.split() + ["</s>"]
         elif type_ == "target":

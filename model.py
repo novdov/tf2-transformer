@@ -15,8 +15,7 @@ class Transformer(tf.keras.models.Model):
                  encoder_vocab_size,
                  decoder_vocab_size,
                  dropout_rate=0.1):
-        super(Transformer, self).__init__()
-
+        super(Transformer, self).__init__(name="transformer")
         self.encoder = Encoder(num_layers,
                                num_heads,
                                d_model,
@@ -33,15 +32,15 @@ class Transformer(tf.keras.models.Model):
         logger.info("Building Decoder")
         self.final_layer = ops.dense_layer(decoder_vocab_size)
 
-    def call(self,
-             inputs,
-             targets,
-             training,
-             encoder_mask,
-             decoder_mask,
-             subsequent_mask):
-        encoder_output = self.encoder(inputs, encoder_mask, training)
+    def call(self, features, training):
+        source = features["inputs"]
+        targets = features["targets"]
+
+        enc_padding_mask, dec_padding_mask, combined_mask = \
+            ops.create_masks(source, targets)
+
+        encoder_output = self.encoder(source, enc_padding_mask, training)
         decoder_output, attention_weights = self.decoder(
-            targets, encoder_output, decoder_mask, subsequent_mask, training)
+            targets, encoder_output, dec_padding_mask, combined_mask, training)
         final_output = self.final_layer(decoder_output)
-        return final_output, attention_weights
+        return final_output

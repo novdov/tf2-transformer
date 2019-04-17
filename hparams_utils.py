@@ -10,7 +10,7 @@ class Hparams:
         try:
             return self._hparams[key]
         except KeyError:
-            raise AttributeError(f"Cannot find {key}.")
+            raise AttributeError("Cannot find key.")
 
 
 def load_json(filename):

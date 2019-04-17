@@ -76,23 +76,8 @@ def multi_head_attention(query,
     return outputs
 
 
-def layer_norm(inputs, do_scale=True):
-    length = inputs.get_shape()[-1]
-    mean = tf.reduce_mean(inputs, axis=[-1], keep_dims=True)
-    var = tf.reduce_mean(tf.square(inputs - mean),
-                         axis=[-1],
-                         keep_dims=True)
-    norm_inputs = (inputs - mean) * tf.math.rsqrt(var + 1e12)
-
-    if do_scale:
-        scale = tf.Variable(initial_value=tf.ones(shape=[length]),
-                            name="scale")
-        bias = tf.Variable(initial_value=tf.zeros(shape=[length]),
-                           name="bias")
-        outputs = norm_inputs * scale + bias
-    else:
-        outputs = norm_inputs
-    return outputs
+def layer_norm(inputs):
+    return tf.keras.layers.experimental.LayerNormalization(epsilon=1e-6)(inputs)
 
 
 def position_wise_feed_forward(d_ff, d_model):
@@ -118,33 +103,52 @@ def position_encoding(length, depth):
         tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale)
     scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(div_terms, 0)
     signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
-    return tf.expand_dims(signal, axis=0)
+    return signal[tf.newaxis, :]
 
 
 def create_embedding(vocab_size, embedding_size):
     return tf.keras.layers.Embedding(vocab_size, embedding_size)
 
 
-def mask_tensor(input_tensor, subsequent=False):
-    negative_inf = -2 ** 32 + 1
-    if subsequent:
-        diag_vals = tf.ones_like(tf.expand_dims(input_tensor[0], 0))
-        triu = tf.linalg.LinearOperatorLowerTriangular(diag_vals).to_dense()
-        mask = tf.tile(triu, [input_tensor.shape[0], 1, 1])
-    else:
-        mask = tf.sign(input_tensor)
+def create_padding_mask(input_tensor):
+    sequence = tf.cast(tf.math.equal(input_tensor, 0), tf.float32)
+    return sequence[:, tf.newaxis, tf.newaxis, :]
 
-    paddings = tf.ones_like(mask) * negative_inf
-    return tf.where(tf.equal(mask, 0), paddings, input_tensor)
+
+def create_subsequent_mask(length):
+    return 1 - tf.linalg.band_part(tf.ones((length, length)), -1, 0)
+
+
+def create_masks(inputs, targets):
+    enc_padding_mask = create_padding_mask(inputs)
+    dec_padding_mask = create_padding_mask(inputs)
+    subsequent_mask = create_subsequent_mask(tf.shape(targets)[1])
+    dec_target_padding_mask = create_padding_mask(targets)
+    combined_mask = tf.maximum(dec_target_padding_mask, subsequent_mask)
+    return enc_padding_mask, dec_padding_mask, combined_mask
 
 
 def label_smoothing(input_tensor, epsilon=0.1):
     return (1 - epsilon) * input_tensor + (epsilon / input_tensor.shape[-1])
 
 
-def noam_lr_decay(learning_rate, step, learning_rate_warmup_steps):
-    learning_rate *= tf.minimum(
-        step * learning_rate_warmup_steps ** -1.5,
-        step ** -0.5
-    )
-    return learning_rate
+class CustomAdamLearningRateSchedule(
+        tf.keras.optimizers.schedules.LearningRateSchedule):
+    def __init__(self, d_model, warmup_steps=4000):
+        self.d_model = tf.cast(d_model, tf.float32)
+        self.warmup_steps = warmup_steps
+
+    def __call__(self, step):
+        arg1 = tf.math.rsqrt(step)
+        arg2 = step * (self.warmup_steps ** -1.5)
+
+        return tf.math.rsqrt(self.d_model) * tf.minimum(arg1, arg2)
+
+
+def loss_function(true, pred):
+    object_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    mask = tf.math.not_equal(true, 0)
+    loss = object_fn(true, pred)
+    mask = tf.cast(mask, dtype=loss.dtype)
+    loss *= mask
+    return tf.reduce_mean(loss)
