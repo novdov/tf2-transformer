@@ -44,7 +44,7 @@ def train_fn(hparams,
     last_epoch = 0
     output_fmt = os.path.join(output_dir, "model-{epoch:05d}")
     callbacks.append(tf.keras.callbacks.ModelCheckpoint(
-        filepath=output_fmt, save_weights_only=True, period=20))
+        filepath=output_fmt, save_weights_only=True, period=5))
     checkpoints = tf.io.gfile.glob(os.path.join(output_dir, "model-*"))
     checkpoints = [os.path.basename(ckpt)[6:] for ckpt in checkpoints]
     epoch_numbers = [int(ckpt[:5]) for ckpt in checkpoints if len(ckpt) > 4]
@@ -56,7 +56,7 @@ def train_fn(hparams,
 
     model.fit(x=train_batches,
               epochs=train_steps // eval_frequency,
-              steps_per_epoch=eval_frequency,
+              # steps_per_epoch=eval_frequency,
               validation_data=eval_batches,
               validation_steps=eval_steps,
               initial_epoch=last_epoch,

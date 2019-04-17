@@ -37,7 +37,8 @@ class Data:
         )
         if self.mode == "train":
             dataset.shuffle(128)
-        dataset = dataset.repeat()
+
+        dataset = dataset.repeat(self.hparams.eval_frequency)
         dataset = dataset.padded_batch(batch_size, shapes).prefetch(8)
         return dataset
 
