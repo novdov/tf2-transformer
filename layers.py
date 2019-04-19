@@ -166,6 +166,7 @@ class Decoder(tf.keras.layers.Layer):
         decoder_input = self.embedding(decoder_input)
         decoder_input *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
         decoder_input += self.position_encoding[:, :seq_len, :]
+        decoder_input = self.dropout(decoder_input, training=training)
 
         for i in range(self.num_layers):
             decoder_input, att_weights1, att_weights2 = self.decoder_layers[i](
