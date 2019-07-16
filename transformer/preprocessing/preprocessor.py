@@ -5,7 +5,7 @@ from pathlib import Path
 import sentencepiece as spm
 from tqdm import tqdm
 
-from transformer.utils.utils import logger
+from transformer.utils.logging import logger
 
 
 class Preprocessor:
