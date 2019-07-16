@@ -1,6 +1,6 @@
 import logging
-from colorlog import ColoredFormatter
 
+from colorlog import ColoredFormatter
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -17,7 +17,7 @@ formatter = ColoredFormatter(
         "CRITICAL": "red,bg_white",
     },
     secondary_log_colors={},
-    style="%"
+    style="%",
 )
 
 ch.setFormatter(formatter)

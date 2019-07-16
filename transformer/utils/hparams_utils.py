@@ -2,7 +2,6 @@ import json
 
 
 class Hparams:
-
     def __init__(self, hparam_path):
         self._hparams = load_json(hparam_path)
 

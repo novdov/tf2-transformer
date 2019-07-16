@@ -1,20 +1,15 @@
 import math
+
 import tensorflow as tf
 
 
 def dense_layer(units, activation=None, use_bias=True, **kwargs):
     return tf.keras.layers.Dense(
-        units=units,
-        activation=activation,
-        use_bias=use_bias,
-        **kwargs
+        units=units, activation=activation, use_bias=use_bias, **kwargs
     )
 
 
-def scaled_dot_product_attention(query,
-                                 keys,
-                                 values,
-                                 mask=None):
+def scaled_dot_product_attention(query, keys, values, mask=None):
     """
     Calculate the attention weights.
     :param query: a query Tensor with shape of [..., seq_len_q, depth]
@@ -27,7 +22,7 @@ def scaled_dot_product_attention(query,
     scaled_logits = tf.matmul(query, keys, transpose_b=True) * tf.math.rsqrt(d_k)
 
     if mask is not None:
-        scaled_logits += (mask * 1e-9)
+        scaled_logits += mask * 1e-9
 
     weights = tf.nn.softmax(scaled_logits, axis=-1)
     output = tf.matmul(weights, values)
@@ -42,10 +37,9 @@ def position_wise_feed_forward(d_ff, d_model):
     """
     Apply position wise feed forward to inputs.
     """
-    return tf.keras.Sequential([
-        dense_layer(units=d_ff, activation=tf.nn.relu),
-        dense_layer(d_model)
-    ])
+    return tf.keras.Sequential(
+        [dense_layer(units=d_ff, activation=tf.nn.relu), dense_layer(d_model)]
+    )
 
 
 def sublayer_connection(inputs, outputs):
@@ -58,7 +52,8 @@ def position_encoding(length, depth):
 
     log_timescale = math.log(10000.0) / (tf.cast(num_timescales, dtype=tf.float32) - 1)
     div_terms = tf.exp(
-        tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale)
+        tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale
+    )
     scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(div_terms, 0)
     signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
     return signal[tf.newaxis, :]
@@ -90,9 +85,9 @@ def label_smoothing(input_tensor, epsilon=0.1):
     return (1 - epsilon) * input_tensor + (epsilon / input_tensor.shape[-1])
 
 
-class CustomLearningRateSchedule(
-        tf.keras.optimizers.schedules.LearningRateSchedule):
+class CustomLearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
     def __init__(self, d_model, warmup_steps=4000):
+        super().__init__()
         self.d_model = tf.cast(d_model, tf.float32)
         self.warmup_steps = warmup_steps
 

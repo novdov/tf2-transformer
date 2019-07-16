@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from preprocessor import Preprocessor
-from hparams import Hparams
+from transformer.preprocessing.preprocessor import Preprocessor
+from transformer.utils.hparams_utils import Hparams
 
 
 if __name__ == "__main__":

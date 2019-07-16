@@ -1,63 +1,65 @@
 import os
+
 import tensorflow as tf
 
-from transformer.utils import model_ops as ops
 from transformer.data.data import Data
+from transformer.utils import model_ops as ops
 
 
-def optimize_fn(model,
-                loss,
-                lr_schedule=None,
-                metrics=None):
+def optimize_fn(model, loss, lr_schedule=None, metrics=None):
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
     metrics = metrics or [tf.keras.metrics.sparse_categorical_accuracy]
-    return model.compile(optimizer=optimizer,
-                         loss=loss,
-                         metrics=metrics)
+    return model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
 
-def train_fn(hparams,
-             output_dir,
-             model,
-             train_steps,
-             eval_steps,
-             eval_frequency):
+class Trainer:
+    def __init__(self, hparams, model):
+        self.hparams = hparams
+        self.model = model
 
-    learning_rate = ops.CustomLearningRateSchedule(hparams.d_model)
-    optimize_fn(model,
-                loss=ops.loss_function,
-                lr_schedule=learning_rate)
+        self.train_dataset = Data(hparams, mode="train")
+        self.eval_dataset = Data(hparams, mode="eval")
 
-    train_dataset = Data(hparams, mode="train")
-    eval_dataset = Data(hparams, mode="eval")
+        self.train_batches = self.train_dataset.batchify_data()
+        self.eval_batches = self.eval_dataset.batchify_data()
 
-    train_batches = train_dataset.batchify_data()
-    eval_batches = eval_dataset.batchify_data()
+    def train_and_evaluate(
+        self, train_steps, eval_steps, eval_frequency, checkpoint_dir
+    ):
+        callbacks = [
+            tf.keras.callbacks.History(),
+            tf.keras.callbacks.BaseLogger(),
+            tf.keras.callbacks.TensorBoard(log_dir=checkpoint_dir),
+        ]
 
-    # model.fit(train_batches, epochs=1, steps_per_epoch=1)
+        last_epoch = 0
+        output_fmt = os.path.join(checkpoint_dir, "model-{epoch:05d}")
+        callbacks.append(
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=output_fmt, save_weights_only=True, period=5
+            )
+        )
 
-    callbacks = [
-        tf.keras.callbacks.History(),
-        tf.keras.callbacks.BaseLogger(),
-        tf.keras.callbacks.TensorBoard(log_dir=output_dir)
-    ]
-    last_epoch = 0
-    output_fmt = os.path.join(output_dir, "model-{epoch:05d}")
-    callbacks.append(tf.keras.callbacks.ModelCheckpoint(
-        filepath=output_fmt, save_weights_only=True, period=5))
-    checkpoints = tf.io.gfile.glob(os.path.join(output_dir, "model-*"))
-    checkpoints = [os.path.basename(ckpt)[6:] for ckpt in checkpoints]
-    epoch_numbers = [int(ckpt[:5]) for ckpt in checkpoints if len(ckpt) > 4]
-    epoch_numbers.sort()
-    if epoch_numbers:
-        last_epoch = epoch_numbers[-1]
-        saved_path = os.path.join(output_dir, f"model-{last_epoch:.05d}")
-        model.load_weights(saved_path)
+        checkpoints = tf.io.gfile.glob(os.path.join(checkpoint_dir, "model-*"))
+        checkpoints = [os.path.basename(ckpt)[6:] for ckpt in checkpoints]
 
-    model.fit(x=train_batches,
-              epochs=train_steps // eval_frequency,
-              # steps_per_epoch=eval_frequency,
-              validation_data=eval_batches,
-              validation_steps=eval_steps,
-              initial_epoch=last_epoch,
-              callbacks=callbacks)
+        epoch_numbers = [int(ckpt[:5]) for ckpt in checkpoints if len(ckpt) > 4]
+        epoch_numbers.sort()
+
+        learning_rate = ops.CustomLearningRateSchedule(self.hparams.d_model)
+        optimize_fn(self.model, loss=ops.loss_function, lr_schedule=learning_rate)
+
+        if epoch_numbers:
+            last_epoch = epoch_numbers[-1]
+            saved_path = os.path.join(checkpoint_dir, f"model-{last_epoch:.05d}")
+            self.model.load_weights(saved_path)
+
+        self.model.fit(
+            x=self.train_batches,
+            epochs=train_steps // eval_frequency,
+            # steps_per_epoch=eval_frequency,
+            validation_data=self.eval_batches,
+            validation_steps=eval_steps,
+            initial_epoch=last_epoch,
+            callbacks=callbacks,
+        )

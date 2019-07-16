@@ -1,23 +1,29 @@
 import os
 import re
-import sentencepiece as spm
-from tqdm import tqdm
 from pathlib import Path
 
-from utils import logger
+import sentencepiece as spm
+from tqdm import tqdm
+
+from transformer.utils.utils import logger
 
 
 class Preprocessor:
-
     def __init__(self, hparams):
         self.hparams = hparams
         self.file_paths = {
-            "train": {"en": "iwslt2016/train.tags.de-en.en",
-                      "de": "iwslt2016/train.tags.de-en.de"},
-            "eval": {"en": "iwslt2016/IWSLT16.TED.tst2013.de-en.en.xml",
-                     "de": "iwslt2016/IWSLT16.TED.tst2013.de-en.de.xml"},
-            "test": {"en": "iwslt2016/IWSLT16.TED.tst2014.de-en.en.xml",
-                     "de": "iwslt2016/IWSLT16.TED.tst2014.de-en.de.xml"}
+            "train": {
+                "en": "iwslt2016/train.tags.de-en.en",
+                "de": "iwslt2016/train.tags.de-en.de",
+            },
+            "eval": {
+                "en": "iwslt2016/IWSLT16.TED.tst2013.de-en.en.xml",
+                "de": "iwslt2016/IWSLT16.TED.tst2013.de-en.de.xml",
+            },
+            "test": {
+                "en": "iwslt2016/IWSLT16.TED.tst2014.de-en.en.xml",
+                "de": "iwslt2016/IWSLT16.TED.tst2014.de-en.de.xml",
+            },
         }
         self.files = {key: {} for key in self.file_paths.keys()}
         for mode, file_paths in self.file_paths.items():
@@ -32,12 +38,16 @@ class Preprocessor:
         self.sentpiece_processor.Load(model_path)
 
     def train_tokenizer(self, model_prefix):
-        input_path = os.path.join(self.data_output_fmt.format("preprocessed"), "train.bpe")
-        params = f"--input={input_path} --pad_id=0 " \
-                 f"--unk_id=1 --bos_id=2 --eos_id=3 " \
-                 f"--model_prefix={model_prefix} " \
-                 f"--vocab_size={self.hparams.vocab_size} " \
-                 f"--model_type=bpe"
+        input_path = os.path.join(
+            self.data_output_fmt.format("preprocessed"), "train.bpe"
+        )
+        params = (
+            f"--input={input_path} --pad_id=0 "
+            f"--unk_id=1 --bos_id=2 --eos_id=3 "
+            f"--model_prefix={model_prefix} "
+            f"--vocab_size={self.hparams.vocab_size} "
+            f"--model_type=bpe"
+        )
         spm.SentencePieceTrainer.Train(params)
 
     def segment_and_write(self):
@@ -71,8 +81,9 @@ class Preprocessor:
         en_train = self.files["train"]["en"]
         de_train = self.files["train"]["de"]
         all_train_data_bpe = en_train + de_train
-        all_train_data = [(en_sent + "\t" + de_sent)
-                          for en_sent, de_sent in zip(en_train, de_train)]
+        all_train_data = [
+            (en_sent + "\t" + de_sent) for en_sent, de_sent in zip(en_train, de_train)
+        ]
 
         _write_file(all_train_data_bpe, os.path.join(output_dir, "train.bpe"))
         _write_file(all_train_data, os.path.join(output_dir, "train"))
@@ -81,10 +92,15 @@ class Preprocessor:
 def read_file(filename, mode):
     logger.info(f"Read file from {filename}.")
     if mode == "train":
-        texts = [line for line in tqdm(Path(filename).open("r").read().splitlines())
-                 if not line.startswith("<")]
+        texts = [
+            line
+            for line in tqdm(Path(filename).open("r").read().splitlines())
+            if not line.startswith("<")
+        ]
     else:
-        texts = [re.sub("<[^>]+>", "", line)
-                 for line in tqdm(Path(filename).open("r").read().splitlines())
-                 if line.startswith("<seq")]
+        texts = [
+            re.sub("<[^>]+>", "", line)
+            for line in tqdm(Path(filename).open("r").read().splitlines())
+            if line.startswith("<seq")
+        ]
     return texts
