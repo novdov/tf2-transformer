@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from transformer.modules import TransformerDecoder, TransformerEncoder
-from transformer.utils import model_ops as ops
+from transformer.modules import model_ops as ops
 from transformer.utils.logging import logger
 
 

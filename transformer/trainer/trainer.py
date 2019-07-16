@@ -3,7 +3,7 @@ import os
 import tensorflow as tf
 
 from transformer.data.data import Data
-from transformer.utils import model_ops as ops
+from transformer.modules import model_ops as ops
 
 
 def optimize_fn(model, loss, lr_schedule=None, metrics=None):

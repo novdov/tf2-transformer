@@ -29,23 +29,6 @@ def scaled_dot_product_attention(query, keys, values, mask=None):
     return output, weights
 
 
-def layer_norm(inputs):
-    return tf.keras.layers.experimental.LayerNormalization(epsilon=1e-6)(inputs)
-
-
-def position_wise_feed_forward(d_ff, d_model):
-    """
-    Apply position wise feed forward to inputs.
-    """
-    return tf.keras.Sequential(
-        [dense_layer(units=d_ff, activation=tf.nn.relu), dense_layer(d_model)]
-    )
-
-
-def sublayer_connection(inputs, outputs):
-    return layer_norm(inputs + outputs)
-
-
 def position_encoding(length, depth):
     position = tf.cast(tf.range(length), dtype=tf.float32)
     num_timescales = depth // 2

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
+from transformer.modules import model_ops as ops
 from transformer.modules.layers import DecoderLayer
-from transformer.utils import model_ops as ops
 
 
 class TransformerDecoder(tf.keras.layers.Layer):
