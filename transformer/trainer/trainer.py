@@ -1,8 +1,8 @@
 import os
 import tensorflow as tf
 
-import model_ops as ops
-from data import Data
+from transformer.utils import model_ops as ops
+from transformer.data.data import Data
 
 
 def optimize_fn(model,

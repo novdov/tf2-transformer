@@ -12,6 +12,10 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         self.depth = self.d_model // self.num_heads
 
+        self.query_proj = ops.dense_layer(self.d_model)
+        self.key_proj = ops.dense_layer(self.d_model)
+        self.value_proj = ops.dense_layer(self.d_model)
+
     def split_heads(self, input_tensor, batch_size):
         input_tensor = tf.reshape(input_tensor,
                                   [batch_size, -1, self.num_heads, self.depth])
@@ -20,12 +24,9 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     def call(self, query, keys, values, mask):
         batch_size = tf.shape(query)[0]
 
-        mapped_query = self.split_heads(ops.dense_layer(self.d_model)(query),
-                                        batch_size)
-        mapped_keys = self.split_heads(ops.dense_layer(self.d_model)(keys),
-                                       batch_size)
-        mapped_values = self.split_heads(ops.dense_layer(self.d_model)(values),
-                                         batch_size)
+        mapped_query = self.split_heads(self.query_proj(query), batch_size)
+        mapped_keys = self.split_heads(self.key_proj(keys), batch_size)
+        mapped_values = self.split_heads(self.value_proj(values), batch_size)
 
         att_output, att_weights = ops.scaled_dot_product_attention(
             mapped_query, mapped_keys, mapped_values, mask)

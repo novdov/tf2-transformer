@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 import model_ops as ops
-from layers import Encoder, Decoder
+from transformer.modules.layers import Encoder, Decoder
 from utils import logger
 
 
