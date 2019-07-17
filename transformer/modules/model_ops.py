@@ -19,12 +19,15 @@ def scaled_dot_product_attention(query, keys, values, mask=None):
     :return: tuple of attention output and attention weights
     """
     d_k = tf.cast(tf.shape(keys)[-1], tf.float32)
+    # (batch_size, seq_len_q, seq_len_k)
     scaled_logits = tf.matmul(query, keys, transpose_b=True) * tf.math.rsqrt(d_k)
 
     if mask is not None:
         scaled_logits += mask * 1e-9
 
+    # (batch_size, seq_len_q, seq_len_k)
     weights = tf.nn.softmax(scaled_logits, axis=-1)
+    # (batch_size, seq_len_q, depth_v)
     output = tf.matmul(weights, values)
     return output, weights
 
