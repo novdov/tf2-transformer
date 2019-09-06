@@ -23,7 +23,7 @@ def scaled_dot_product_attention(query, keys, values, mask=None):
     scaled_logits = tf.matmul(query, keys, transpose_b=True) * tf.math.rsqrt(d_k)
 
     if mask is not None:
-        scaled_logits += mask * 1e-9
+        scaled_logits += mask * -1e9
 
     # (batch_size, seq_len_q, seq_len_k)
     weights = tf.nn.softmax(scaled_logits, axis=-1)
