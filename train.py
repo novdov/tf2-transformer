@@ -16,7 +16,7 @@ if __name__ == "__main__":
     output_dir = os.path.expanduser(args.output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
-    base_dir = Path(__file__).resolve().parents[1]
+    base_dir = Path(__file__).resolve().parent
     hparams = Hparams(base_dir.joinpath("hparams.json"))
 
     model = Transformer(
