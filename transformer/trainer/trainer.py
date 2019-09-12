@@ -23,25 +23,21 @@ class Trainer:
         self.train_batches = self.train_dataset.batchify_data()
         self.eval_batches = self.eval_dataset.batchify_data()
 
-        print(self.model.summary())
-
     def train_and_evaluate(
         self, train_steps, eval_steps, eval_frequency, checkpoint_dir
     ):
         callbacks = [
             tf.keras.callbacks.History(),
             tf.keras.callbacks.BaseLogger(),
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=os.path.join(checkpoint_dir, "model-{epoch:05d}"),
+                save_weights_only=True,
+                save_freq=5,
+            ),
             tf.keras.callbacks.TensorBoard(log_dir=checkpoint_dir),
         ]
 
         last_epoch = 0
-        output_fmt = os.path.join(checkpoint_dir, "model-{epoch:05d}")
-        callbacks.append(
-            tf.keras.callbacks.ModelCheckpoint(
-                filepath=output_fmt, save_weights_only=True, period=5
-            )
-        )
-
         checkpoints = tf.io.gfile.glob(os.path.join(checkpoint_dir, "model-*"))
         checkpoints = [os.path.basename(ckpt)[6:] for ckpt in checkpoints]
 
