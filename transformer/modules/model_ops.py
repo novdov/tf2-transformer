@@ -1,5 +1,3 @@
-import math
-
 import tensorflow as tf
 
 
@@ -7,46 +5,6 @@ def dense_layer(units, activation=None, use_bias=True, **kwargs):
     return tf.keras.layers.Dense(
         units=units, activation=activation, use_bias=use_bias, **kwargs
     )
-
-
-def scaled_dot_product_attention(query, keys, values, mask=None):
-    """
-    Calculate the attention weights.
-    :param query: a query Tensor with shape of [..., seq_len_q, depth]
-    :param keys: a key Tensor with shape of [..., seq_len_k, depth]
-    :param values: a vale Tensor with shape of [..., seq_len_v, depth]
-    :param mask: mask Tensor broadcastable
-    :return: tuple of attention output and attention weights
-    """
-    d_k = tf.cast(tf.shape(keys)[-1], tf.float32)
-    # (batch_size, seq_len_q, seq_len_k)
-    scaled_logits = tf.matmul(query, keys, transpose_b=True) * tf.math.rsqrt(d_k)
-
-    if mask is not None:
-        scaled_logits += mask * -1e9
-
-    # (batch_size, seq_len_q, seq_len_k)
-    weights = tf.nn.softmax(scaled_logits, axis=-1)
-    # (batch_size, seq_len_q, depth_v)
-    output = tf.matmul(weights, values)
-    return output, weights
-
-
-def position_encoding(length, depth):
-    position = tf.cast(tf.range(length), dtype=tf.float32)
-    num_timescales = depth // 2
-
-    log_timescale = math.log(10000.0) / (tf.cast(num_timescales, dtype=tf.float32) - 1)
-    div_terms = tf.exp(
-        tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale
-    )
-    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(div_terms, 0)
-    signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
-    return signal[tf.newaxis, :]
-
-
-def create_embedding(vocab_size, embedding_size):
-    return tf.keras.layers.Embedding(vocab_size, embedding_size)
 
 
 def create_padding_mask(input_tensor):

@@ -1,16 +1,16 @@
-import copy
-
 import tensorflow as tf
 
-from transformer.modules import model_ops as ops
-from transformer.modules.multi_head_attention import MultiHeadAttention
+from .attention import MultiHeadAttention
 
 
-class PositionwiseFeedForward(tf.keras.layers.Layer):
+class PointWiseFeedForward(tf.keras.layers.Layer):
     def __init__(self, d_ff, d_model):
         super().__init__()
         self.ffn = tf.keras.Sequential(
-            [ops.dense_layer(d_ff, activation=tf.nn.relu), ops.dense_layer(d_model)]
+            [
+                tf.keras.layers.Dense(d_ff, activation="relu"),
+                tf.keras.layers.Dense(d_model),
+            ]
         )
 
     def __call__(self, ffn_input):
@@ -20,18 +20,18 @@ class PositionwiseFeedForward(tf.keras.layers.Layer):
 class SublayerConnection(tf.keras.layers.Layer):
     def __init__(self):
         super().__init__()
-        self.layer_norm = tf.keras.layers.experimental.LayerNormalization(epsilon=1e-6)
+        self.layer_norm = tf.keras.layers.LayerNormalization(epsilon=1e-6)
 
     def call(self, x, sublayer_output):
         return self.layer_norm(x + sublayer_output)
 
 
-class EncoderLayer(tf.keras.layers.Layer):
+class TransformerEncoderLayer(tf.keras.layers.Layer):
     def __init__(self, num_heads, d_model, d_ff, dropout_rate):
         super().__init__()
         self.multi_head_attention = MultiHeadAttention(d_model, num_heads)
-        self.ffn = PositionwiseFeedForward(d_ff, d_model)
-        self.sublayers = [copy.deepcopy(SublayerConnection()) for _ in range(2)]
+        self.ffn = PointWiseFeedForward(d_ff, d_model)
+        self.sublayers = [SublayerConnection() for _ in range(2)]
 
         self.att_dropout = tf.keras.layers.Dropout(dropout_rate)
         self.ffn_dropout = tf.keras.layers.Dropout(dropout_rate)
@@ -49,13 +49,13 @@ class EncoderLayer(tf.keras.layers.Layer):
         return output2
 
 
-class DecoderLayer(tf.keras.layers.Layer):
+class TransformerDecoderLayer(tf.keras.layers.Layer):
     def __init__(self, num_heads, d_model, d_ff, dropout_rate):
-        super(DecoderLayer, self).__init__()
+        super().__init__()
         self.multi_head_attention1 = MultiHeadAttention(d_model, num_heads)
         self.multi_head_attention2 = MultiHeadAttention(d_model, num_heads)
-        self.ffn = PositionwiseFeedForward(d_ff, d_model)
-        self.sublayers = [copy.deepcopy(SublayerConnection()) for _ in range(3)]
+        self.ffn = PointWiseFeedForward(d_ff, d_model)
+        self.sublayers = [SublayerConnection() for _ in range(3)]
 
         self.att_dropout1 = tf.keras.layers.Dropout(dropout_rate)
         self.att_dropout2 = tf.keras.layers.Dropout(dropout_rate)

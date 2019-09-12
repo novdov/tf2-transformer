@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from transformer.modules import TransformerDecoder, TransformerEncoder
 from transformer.modules import model_ops as ops
+from transformer.modules.blocks import TransformerDecoder, TransformerEncoder
 from transformer.utils.logging import logger
 
 
@@ -25,7 +25,7 @@ class Transformer(tf.keras.models.Model):
             num_layers, num_heads, d_model, d_ff, decoder_vocab_size, dropout_rate
         )
         logger.info("Building Decoder")
-        self.final_layer = ops.dense_layer(decoder_vocab_size)
+        self.final_layer = tf.keras.layers.Dense(decoder_vocab_size)
 
     def call(self, features, training):
         source = features["inputs"]

@@ -23,6 +23,8 @@ class Trainer:
         self.train_batches = self.train_dataset.batchify_data()
         self.eval_batches = self.eval_dataset.batchify_data()
 
+        print(self.model.summary())
+
     def train_and_evaluate(
         self, train_steps, eval_steps, eval_frequency, checkpoint_dir
     ):
